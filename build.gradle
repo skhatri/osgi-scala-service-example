@@ -1,0 +1,64 @@
+apply plugin: 'scala'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+apply plugin: 'maven'
+
+project.ext {
+    artifactId = 'x-service'
+    groupId = 'x-service'
+    version = '1.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    compile 'org.apache.felix:org.osgi.core:1.4.0'
+	compile 'org.scala-lang:scala-library:2.10.2'
+    compile 'com.typesafe.zinc:zinc:0.1.4'
+    compile 'org.scala-tools.testing:specs_2.10:1.6.9'
+}
+
+compileScala {
+    scalaCompileOptions.useCompileDaemon = true
+    scalaCompileOptions.daemonServer = "localhost:4244"
+}
+
+tasks.withType(ScalaCompile) {
+    configure(scalaCompileOptions.forkOptions) {
+        memoryMaximumSize = '512m'
+        jvmArgs = ['-XX:MaxPermSize=256m']
+    }
+    scalaCompileOptions.useAnt = false
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: project.publishDir)
+            pom.groupId = project.groupId
+            pom.artifactId = project.artifactId
+            pom.version = project.ext.version
+        }
+    }
+}
+
+
+jar {
+    baseName = project.artifactId
+    manifest {
+        attributes("Implementation-Title": "Cash Transaction", "Implementation-Version": project.ext.version)
+        from('src/main/resources/META-INF/MANIFEST.MF')
+    }
+
+}
+
+task deploy << {
+    ant {
+        copy(file:"${rootProject.libsDir}/${rootProject.artifactId}.jar", tofile:"${rootProject.osgiDeployDir}/${rootProject.artifactId}.jar",
+        overwrite:true)
+    }
+}
+
